@@ -6,12 +6,17 @@ import (
 	"strings"
 )
 
-func main() {
-	cmd := exec.Command("git", "remote", "show", "origin")
-	output, err := cmd.Output()
+func runCommand(name string, args ...string) string {
+	output, err := exec.Command(name, args...).CombinedOutput()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("%v\n%s", err, strings.TrimSpace(string(output))))
 	}
+
+	return string(output)
+}
+
+func main() {
+	output := runCommand("git", "remote", "show", "origin")
 
 	var branch string
 	for _, line := range strings.Split(string(output), "\n") {
@@ -25,16 +30,9 @@ func main() {
 	fmt.Printf("Default branch: %s\n", branch)
 	fmt.Println("Checkout to default branch")
 
-	cmd = exec.Command("git", "checkout", branch)
-	if err := cmd.Run(); err != nil {
-		panic(err)
-	}
+	runCommand("git", "checkout", branch)
 
-	cmd = exec.Command("git", "branch")
-	output, err = cmd.Output()
-	if err != nil {
-		panic(err)
-	}
+	output = runCommand("git", "branch")
 
 	var branches []string
 	for _, line := range strings.Split(string(output), "\n") {
@@ -51,10 +49,8 @@ func main() {
 
 	fmt.Printf("Other branches: %s\n", strings.Join(branches, ", "))
 
-	cmd = exec.Command("git", "branch", "-d", strings.Join(branches, ", "))
-	if err := cmd.Run(); err != nil {
-		panic(err)
-	}
+	deleteArgs := append([]string{"branch", "-d"}, branches...)
+	runCommand("git", deleteArgs...)
 
 	fmt.Println("Deleted other branches.")
 }
