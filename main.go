@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/spf13/pflag"
 )
 
 func runCommand(name string, args ...string) string {
@@ -16,7 +18,15 @@ func runCommand(name string, args ...string) string {
 }
 
 func main() {
-	output := runCommand("git", "remote", "show", "origin")
+	var remoteName string
+	var interactive, forceDelete bool
+	pflag.StringVarP(&remoteName, "name", "n", "origin", "remote name")
+	pflag.BoolVarP(&interactive, "interactive", "i", false, "interactive mode, ask for confirmation before deleting branchs")
+	pflag.BoolVarP(&forceDelete, "force", "D", false, "force delete branchs")
+
+	pflag.Parse()
+
+	output := runCommand("git", "remote", "show", remoteName)
 
 	var branch string
 	for _, line := range strings.Split(string(output), "\n") {
@@ -49,7 +59,22 @@ func main() {
 
 	fmt.Printf("Other branches: %s\n", strings.Join(branches, ", "))
 
-	deleteArgs := append([]string{"branch", "-d"}, branches...)
+	if interactive {
+		var confirm string
+		fmt.Print("Are you sure you want to delete these branches? (y/N): ")
+		fmt.Scanln(&confirm)
+		if strings.ToLower(confirm) != "y" {
+			fmt.Println("Aborting.")
+			return
+		}
+	}
+
+	del := "-d"
+	if forceDelete {
+		del = "-D"
+	}
+
+	deleteArgs := append([]string{"branch", del}, branches...)
 	runCommand("git", deleteArgs...)
 
 	fmt.Println("Deleted other branches.")
